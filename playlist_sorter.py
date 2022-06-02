@@ -4,29 +4,13 @@ import os
 import pprint
 import sys
 
-# Spotify Specific
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-import spotipy.util as util
-
-CLIENT_ID = os.getenv('CLIENT_ID')
-SECRET_ID = os.getenv('SECRET_ID')
-USERNAME = os.getenv('USERNAME')
-SCOPE = 'playlist-modify-public'
-REDIRECT_URI = "http://localhost/"
+# Package Specific
+from spotify_util import do_spotify_auth
 
 
-def spotify_auth():
-	token = util.prompt_for_user_token(USERNAME, SCOPE, client_id=CLIENT_ID,client_secret=SECRET_ID,redirect_uri=REDIRECT_URI)
-	if token: 
-		return spotipy.Spotify(auth=token)
-	else: 
-		print("Can't get token for ", username)
-
-
-def get_playlist_songs(spotify, playlist_id):
+def get_playlist_songs(username, spotify, playlist_id):
 	""" Gets the tracks on the spotify playlist with audio analysis. """
-	results = spotify.user_playlist(USERNAME, playlist_id)
+	results = spotify.user_playlist(username, playlist_id)
 	tracks = results['tracks']['items']
 	track_ids = []
 	for track in tracks:
@@ -57,12 +41,12 @@ def sort_songs(scored_songs):
 	return sorted_songs
 
 
-def replace_tracks(spotify, sorted_songs, playlist_id):
+def replace_tracks(username, spotify, sorted_songs, playlist_id):
 	""" Replaces the tracks in the playlist. """
 	track_ids = []
 	for song in sorted_songs:
 		track_ids.append(song['id'])
-	spotify.user_playlist_replace_tracks(USERNAME, playlist_id, track_ids)
+	spotify.user_playlist_replace_tracks(username, playlist_id, track_ids)
 
 
 def __main__():
@@ -72,12 +56,15 @@ def __main__():
 	# Parse Arguments
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--id', help='the ID of the playlist in question', default='3p1r9pzmoONlUdtN5bhFdC')
+	parser.add_argument('--username', help='username of individual who owns playlist', default='ivashishta')
 	args = parser.parse_args()
 
-	spotify = spotify_auth()
-	songs = get_playlist_songs(spotify, args.id)
+	username = args.username
+
+	spotify = do_spotify_auth(username)
+	songs = get_playlist_songs(username, spotify, args.id)
 	scored_songs = score_songs(songs)
 	sorted_songs = sort_songs(scored_songs)
-	replace_tracks(spotify, sorted_songs, args.id)
+	replace_tracks(username, spotify, sorted_songs, args.id)
 
 __main__()
